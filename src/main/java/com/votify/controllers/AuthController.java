@@ -3,7 +3,9 @@ package com.votify.controllers;
 import com.votify.dtos.requests.AuthenticationRequestDto;
 import com.votify.dtos.requests.ResetPasswordRequestDto;
 import com.votify.dtos.requests.UserEmailRequestDto;
+import com.votify.dtos.responses.UserResponseDTO;
 import com.votify.facades.AuthFacade;
+import com.votify.models.UserModel;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -11,6 +13,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -62,6 +67,32 @@ public class AuthController {
         return ResponseEntity.ok()
                 .header("Authorization", "Bearer " + token)
                 .build();
+    }
+
+        @GetMapping("/me")
+    @Operation(summary = "Get authenticated user information", description = "Returns the current authenticated user's details",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "User information retrieved successfully",
+                            content = @Content(mediaType = "application/json",
+                                    examples = @ExampleObject(value = """
+                                                {
+                                                    "id": 1,
+                                                    "name": "John",
+                                                    "surname": "Doe",
+                                                    "email": "john.doe@example.com",
+                                                    "role": "ADMIN"
+                                                }
+                                            """))),
+                    @ApiResponse(responseCode = "401", description = "Unauthorized access",
+                            content = @Content(mediaType = "application/json",
+                                    examples = @ExampleObject(name = "UnauthorizedAccess", value = "{\"message\": \"Unauthorized access. Authentication required.\"}")
+                            ))
+            })
+    public ResponseEntity<UserResponseDTO> personalInfo() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        UserModel userModel = (UserModel) authentication.getPrincipal();
+        UserResponseDTO userResponseDTO = this.authFacade.getCurrentUserInfo(userModel.getId());
+        return ResponseEntity.ok(userResponseDTO);
     }
 
     @Operation(summary = "Forgot password", description = "Send an email with a code to reset the password", responses = {
